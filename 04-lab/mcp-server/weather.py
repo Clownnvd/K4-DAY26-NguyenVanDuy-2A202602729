@@ -15,6 +15,25 @@ USER_AGENT = "weather-app/1.0"
 # Get API key from environment variable
 API_KEY = os.getenv("WEATHERAPI_KEY")
 
+
+async def _open_meteo(city: str, days: int = 1) -> dict[str, Any] | None:
+    """Real-weather fallback for local labs when no WeatherAPI key is configured."""
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        geo = await client.get("https://geocoding-api.open-meteo.com/v1/search", params={
+            "name": city, "count": 1, "language": "vi", "format": "json"})
+        geo.raise_for_status()
+        locations = geo.json().get("results", [])
+        if not locations:
+            return None
+        location = locations[0]
+        weather = await client.get("https://api.open-meteo.com/v1/forecast", params={
+            "latitude": location["latitude"], "longitude": location["longitude"],
+            "current": "temperature_2m,relative_humidity_2m,apparent_temperature,wind_speed_10m",
+            "daily": "temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max",
+            "forecast_days": min(max(days, 1), 3), "timezone": "auto"})
+        weather.raise_for_status()
+        return {"location": location, "weather": weather.json()}
+
 async def make_weather_request(endpoint: str, params: dict[str, str]) -> dict[str, Any] | None:
     """Make a request to the WeatherAPI with proper error handling."""
     # Check if API key is set
@@ -57,6 +76,17 @@ async def get_current_weather(city: str) -> str:
         "aqi": "no"
     }
     
+    if not API_KEY:
+        fallback = await _open_meteo(city)
+        if not fallback:
+            return f"Unable to find real weather data for {city}."
+        loc, current = fallback["location"], fallback["weather"]["current"]
+        return (f"Current Weather for {loc['name']}, {loc.get('country', '')}:\n\n"
+                f"Temperature: {current['temperature_2m']}°C\n"
+                f"Feels like: {current['apparent_temperature']}°C\n"
+                f"Humidity: {current['relative_humidity_2m']}%\n"
+                f"Wind: {current['wind_speed_10m']} km/h\n"
+                f"Provider: Open-Meteo fallback\nLast updated: {current['time']}")
     data = await make_weather_request("current.json", params)
 
     if not data:
@@ -100,6 +130,19 @@ async def get_forecast(city: str, days: int = 3) -> str:
         "alerts": "no"
     }
     
+    if not API_KEY:
+        fallback = await _open_meteo(city, days)
+        if not fallback:
+            return f"Unable to find real forecast data for {city}."
+        loc, daily = fallback["location"], fallback["weather"]["daily"]
+        forecasts = [f"Weather Forecast for {loc['name']}, {loc.get('country', '')} (Open-Meteo fallback):"]
+        for index, date in enumerate(daily["time"]):
+            forecasts.append(
+                f"{date}: High {daily['temperature_2m_max'][index]}°C; "
+                f"Low {daily['temperature_2m_min'][index]}°C; "
+                f"Rain chance {daily['precipitation_probability_max'][index]}%; "
+                f"Max wind {daily['wind_speed_10m_max'][index]} km/h")
+        return "\n---\n".join(forecasts)
     data = await make_weather_request("forecast.json", params)
 
     if not data:

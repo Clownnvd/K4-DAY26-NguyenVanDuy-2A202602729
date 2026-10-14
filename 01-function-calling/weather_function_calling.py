@@ -14,7 +14,7 @@ from google.genai import types
 
 client = genai.Client()
 
-MODEL = "gemini-2.5-flash"
+MODEL = "gemini-3.5-flash-lite"
 
 SYSTEM_INSTRUCTION = (
     "Bạn là trợ lý thời tiết thân thiện, trả lời bằng tiếng Việt tự nhiên. "
@@ -66,8 +66,11 @@ def get_weather(city: str) -> str:
     }
     import json
 
+    aliases = {"hanoi": "Hà Nội", "ha noi": "Hà Nội", "da nang": "Đà Nẵng",
+               "danang": "Đà Nẵng", "ho chi minh": "Hồ Chí Minh", "hcmc": "Hồ Chí Minh"}
+    canonical = aliases.get(city.casefold().strip(), city)
     default = {"nhiệt_độ": "28°C", "thời_tiết": "không có dữ liệu chi tiết"}
-    return json.dumps({"city": city, **mock_data.get(city, default)}, ensure_ascii=False)
+    return json.dumps({"city": canonical, **mock_data.get(canonical, default)}, ensure_ascii=False)
 
 
 def run(prompt: str) -> str:

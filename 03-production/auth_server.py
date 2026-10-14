@@ -28,6 +28,7 @@ VALID_TOKENS: dict[str, str] = {
     os.environ.get("MCP_AUTH_TOKEN", "dev-token-abc123"): "dev-user",
     "prod-key-xyz789": "prod-service",
 }
+AUTH_PORT = int(os.environ.get("MCP_AUTH_PORT", "8086"))
 
 
 class StaticTokenVerifier(TokenVerifier):
@@ -48,8 +49,9 @@ class StaticTokenVerifier(TokenVerifier):
 mcp = MCPServer(
     "weather-secure",
     auth=AuthSettings(
-        issuer_url="http://localhost:8000",
-        resource_server_url="http://localhost:8000",
+        issuer_url=f"http://localhost:{AUTH_PORT}",
+        resource_server_url=f"http://localhost:{AUTH_PORT}",
+        validate_token_resource=False,
     ),
     token_verifier=StaticTokenVerifier(),
 )
@@ -68,4 +70,4 @@ def get_weather(city: str) -> str:
 
 
 if __name__ == "__main__":
-    mcp.run(transport="streamable-http", host="0.0.0.0", port=8000)
+    mcp.run(transport="streamable-http", host="0.0.0.0", port=AUTH_PORT)

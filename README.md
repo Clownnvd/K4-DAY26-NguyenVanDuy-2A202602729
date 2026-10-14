@@ -1,5 +1,8 @@
 # Phân biệt MCP và Function Calling
 
+> Bài làm của Nguyễn Văn Duy (`2A202602729`): xem [báo cáo kết quả](STUDENT_REPORT.md)
+> và thư mục [ảnh bằng chứng](screenshots/).
+
 Đây là hai khái niệm hay bị nhầm lẫn nhưng thực ra ở **hai tầng khác nhau**, và **bổ sung cho nhau** chứ không thay thế.
 
 ## Cấu trúc repo
